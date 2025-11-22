@@ -1,0 +1,4 @@
+venv/
+*.csv
+knn_parallel
+knn_parallel_runs
