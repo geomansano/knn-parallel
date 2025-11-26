@@ -100,6 +100,7 @@ int knn_predict(
     DistLabel *dist_list = (DistLabel *) malloc(n_train * sizeof(DistLabel));
 	
 	// Calcula a distância euclididana do ponto de teste para todos os pontos de treino
+    // #pragma omp parallel for num_threads(8)
     for(int i = 0; i < n_train; i++) {
         dist_list[i].dist = euclidean_distance(test_point, X_train[i], n_features);
         dist_list[i].label = y_train[i];
@@ -145,7 +146,7 @@ int main(int argc, char **argv)
     }
     
     // Exibindo tamanho dos datasets
-    printf("Treino: %d linhas, Teste: %d linhas\n", n_train, n_test);
+    // printf("Treino: %d linhas, Teste: %d linhas\n", n_train, n_test);
 	
 	// Número de features
     int num_features = 36; // número de colunas menos a coluna target
@@ -203,30 +204,30 @@ int main(int argc, char **argv)
     fclose(fp_train);
     fclose(fp_test);
 
-    printf("CSV carregado dinamicamente!\n");
+    // printf("CSV carregado dinamicamente!\n");
     
     // Quantidade máxima de elementos a imprimir
 	int max_print = 10;
 
 	// Imprimindo os primeiros 10 elementos de X_train e y_train
-	printf("\n--- Primeiros elementos de X_train e y_train ---\n");
-	for (int i = 0; i < max_print; i++) {
-		printf("Linha %d: ", i);
-		for (int j = 0; j < num_features; j++) {
-			printf("%.2f ", X_train[i][j]);
-		}
-		printf("| Target: %d\n", y_train[i]);
-	}
+	// printf("\n--- Primeiros elementos de X_train e y_train ---\n");
+	// for (int i = 0; i < max_print; i++) {
+	// 	printf("Linha %d: ", i);
+	// 	for (int j = 0; j < num_features; j++) {
+	// 		printf("%.2f ", X_train[i][j]);
+	// 	}
+	// 	printf("| Target: %d\n", y_train[i]);
+	// }
 
 	// Imprimindo os primeiros 10 elementos de X_test e y_test
-	printf("\n--- Primeiros elementos de X_test e y_test ---\n");
-	for (int i = 0; i < max_print; i++) {
-		printf("Linha %d: ", i);
-		for (int j = 0; j < num_features; j++) {
-			printf("%.2f ", X_test[i][j]);
-		}
-		printf("| Target: %d\n", y_test[i]);
-	}
+	// printf("\n--- Primeiros elementos de X_test e y_test ---\n");
+	// for (int i = 0; i < max_print; i++) {
+	// 	printf("Linha %d: ", i);
+	// 	for (int j = 0; j < num_features; j++) {
+	// 		printf("%.2f ", X_test[i][j]);
+	// 	}
+	// 	printf("| Target: %d\n", y_test[i]);
+	// }
 	
 	// ======================= APLICANDO O KNN SEQUENCIAL =======================
 	
@@ -240,12 +241,13 @@ int main(int argc, char **argv)
 	struct timespec start, end;
 	clock_gettime(CLOCK_MONOTONIC, &start);
 
-	printf("\nAplicando KNN sequencial...\n");
+	// printf("\nAplicando KNN sequencial...\n");
+    #pragma omp parallel for num_threads(8)
 	for (int i = 0; i < n_test; i++) { // 1
 		y_predict[i] = knn_predict(X_train, y_train, n_train, X_test[i], num_features, k);
 
-		if(i % 500 == 0)  // feedback a cada 500 linhas
-			printf("Processando amostra %d de %d...\n", i, n_test);
+		// if(i % 500 == 0)  // feedback a cada 500 linhas
+		// 	printf("Processando amostra %d de %d...\n", i, n_test);
 	}
 	
 	// Fim da medição de tempo
