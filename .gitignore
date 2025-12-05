@@ -2,3 +2,5 @@ venv/
 *.csv
 knn_parallel
 knn_parallel_runs
+knn_parallel_cuda
+old/

@@ -1,27 +1,3 @@
-/*
- * knn_parallel.c
- * 
- * Copyright 2025 Geovanne <geovanne@geovanne-H610M-HVS-M-2-R2-0>
- * 
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
- * MA 02110-1301, USA.
- * 
- * 
- */
-
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -34,7 +10,7 @@ typedef struct {
     int label;
 } DistLabel;
 
-// Conta a quantidade de linhas dos datasets para leitura
+// Conta as linhas do CSV
 int count_lines(const char *filename) {
     FILE *fp = fopen(filename, "r");
     if (!fp) return -1;
@@ -48,11 +24,11 @@ int count_lines(const char *filename) {
     return lines;
 }
 
-// Cálculo da distância Euclidiana
-float euclidean_distance(const float *a, const float *b, int n_features) {
+// Cálculo da Distância Euclidiana 
+float euclidean_distance(const float *train_row, const float *test_row, int n_features) {
     float sum = 0.0f;
-    for(int i = 0; i < n_features; i++) {
-        float diff = a[i] - b[i];
+    for (int i = 0; i < n_features; i++) {
+        float diff = train_row[i] - test_row[i];
         sum += diff * diff;
     }
     return sqrtf(sum);
@@ -93,40 +69,44 @@ void quickselect(DistLabel arr[], int left, int right, int k) {
 
 // Função KNN
 int knn_predict(
-    float **X_train, int *y_train, int n_train,
-    float *test_point, int n_features, int k
+    const float *X_train,
+    const int *y_train,
+    int n_train,
+    const float *test_point,
+    int n_features,
+    int k
 ) {
-    // Cria vetor com distâncias
-    DistLabel *dist_list = (DistLabel *) malloc(n_train * sizeof(DistLabel));
-	
-	// Calcula a distância euclididana do ponto de teste para todos os pontos de treino
-    for(int i = 0; i < n_train; i++) {
-        dist_list[i].dist = euclidean_distance(test_point, X_train[i], n_features);
+    DistLabel *dist_list = malloc(n_train * sizeof(DistLabel));
+
+    for (int i = 0; i < n_train; i++) {
+        const float *train_row = &X_train[i * n_features];
+        dist_list[i].dist = euclidean_distance(train_row, test_point, n_features);
         dist_list[i].label = y_train[i];
     }
 	
 	// Printando os 15 primeiros elementos do vetor antes da ordenação
 	// for(int i = 0; i < 15; i++)
     // printf("[%2d] dist = %.4f | label = %d\n", i, dist_list[i].dist, dist_list[i].label);
-	
+    
     // QuickSelect para achar k menores distâncias
     quickselect(dist_list, 0, n_train - 1, k);
     
     // Printando os 15 primeiros elementos do vetor após a ordenação
 	// for(int i = 0; i < 15; i++)
     // printf("[%2d] dist = %.4f | label = %d\n", i, dist_list[i].dist, dist_list[i].label);
-
-    // Contador do label mais comum (apenas 0 e 1)
-    int count0 = 0, count1 = 0;
-    for(int i = 0; i < k; i++) {
-        if(dist_list[i].label == 0) count0++;
-        else count1++;
+	
+	// Contador do label mais comum 
+    int c0 = 0, c1 = 0;
+    for (int i = 0; i < k; i++) {
+        if (dist_list[i].label == 0) c0++;
+        else c1++;
     }
-
+	
     free(dist_list);
-    
-    return (count1 > count0) ? 1 : 0;
+
+    return (c1 > c0);
 }
+	
 
 int main(int argc, char **argv)
 {
@@ -149,22 +129,18 @@ int main(int argc, char **argv)
 	
 	// Número de features
     int num_features = 36; // número de colunas menos a coluna target
+	
+	// Alocação linear
+	float *X_train = (float*) malloc(n_train * num_features * sizeof(float));
+    float *X_test  = (float*) malloc(n_test  * num_features * sizeof(float));
 
-    // Alocando memória para os dados de treino	
-    float **X_train = (float **)malloc(n_train * sizeof(float *));
-    for (int i = 0; i < n_train; i++)
-        X_train[i] = (float *)malloc(num_features * sizeof(float));
-    int *y_train = (int *)malloc(n_train * sizeof(int));
-
-    // Alocando memória para os dados de teste
-    float **X_test = (float **)malloc(n_test * sizeof(float *));
-    for (int i = 0; i < n_test; i++)
-        X_test[i] = (float *)malloc(num_features * sizeof(float));
-    int *y_test = (int *)malloc(n_test * sizeof(int));
-
+    int *y_train = (int*) malloc(n_train * sizeof(int));
+    int *y_test  = (int*) malloc(n_test  * sizeof(int));
+    
     // Lendo os CSVs
     FILE *fp_train = fopen(train_file, "r");
     FILE *fp_test = fopen(test_file, "r");
+    
     if (!fp_train || !fp_test) {
         printf("Erro ao abrir arquivos CSV\n");
         return 1;
@@ -177,32 +153,37 @@ int main(int argc, char **argv)
     if (fgets(line, sizeof(line), fp_train) == NULL) { }
     if (fgets(line, sizeof(line), fp_test) == NULL) { }
 
-    // CSV de treino
+    // CSV Treino
     while (fgets(line, sizeof(line), fp_train) && row < n_train) {
         char *token = strtok(line, ",");
+
         for (int col = 0; col < num_features; col++) {
-            X_train[row][col] = atof(token);
+            X_train[row * num_features + col] = atof(token);
             token = strtok(NULL, ",");
         }
+
         y_train[row] = atoi(token);
         row++;
     }
 
-    // CSV de teste
+    // CSV Teste
     row = 0;
     while (fgets(line, sizeof(line), fp_test) && row < n_test) {
         char *token = strtok(line, ",");
+
         for (int col = 0; col < num_features; col++) {
-            X_test[row][col] = atof(token);
+            X_test[row * num_features + col] = atof(token);
             token = strtok(NULL, ",");
         }
+
         y_test[row] = atoi(token);
         row++;
     }
-
+    
     fclose(fp_train);
     fclose(fp_test);
-
+    
+    /*
     printf("CSV carregado dinamicamente!\n");
     
     // Quantidade máxima de elementos a imprimir
@@ -227,49 +208,47 @@ int main(int argc, char **argv)
 		}
 		printf("| Target: %d\n", y_test[i]);
 	}
+	*/
 	
-	// ======================= APLICANDO O KNN SEQUENCIAL =======================
-	
-	// Valor do K
-	int k = 5;
+	// ======================= KNN SEQUENCIAL =======================
+	int *y_pred = malloc(n_test * sizeof(int));
+    int k = 5;
 
-	// Vetor de predições
-	int *y_predict = (int *) malloc(n_test * sizeof(int));
-	
-	// Início medição do tempo
-	struct timespec start, end;
-	clock_gettime(CLOCK_MONOTONIC, &start);
+    struct timespec start, end;
+    clock_gettime(CLOCK_MONOTONIC, &start);
 
-	printf("\nAplicando KNN sequencial...\n");
-	for (int i = 0; i < n_test; i++) { // 1
-		y_predict[i] = knn_predict(X_train, y_train, n_train, X_test[i], num_features, k);
+	//printf("\nAplicando KNN sequencial...\n");
+    for (int i = 0; i < n_test; i++) { // n_test
+        y_pred[i] = knn_predict(
+            X_train, y_train, n_train,
+            &X_test[i * num_features],
+            num_features, k
+        );
+        //if(i % 500 == 0)  // feedback a cada 500 linhas
+		//	printf("Processando amostra %d de %d...\n", i, n_test);
+    }
 
-		if(i % 500 == 0)  // feedback a cada 500 linhas
-			printf("Processando amostra %d de %d...\n", i, n_test);
-	}
-	
-	// Fim da medição de tempo
-	clock_gettime(CLOCK_MONOTONIC, &end);
-	double elapsed = (end.tv_sec - start.tv_sec) +
-					 (end.tv_nsec - start.tv_nsec) / 1e9;
-	printf("\nTempo de execução KNN sequencial: %.6f segundos\n", elapsed);
+    clock_gettime(CLOCK_MONOTONIC, &end);
 
-	// Cálculo da acurácia
-	int correct = 0;
-	for (int i = 0; i < n_test; i++) {
-		if (y_predict[i] == y_test[i]) correct++;
-	}
-	
-	float acc = (float) correct / n_test * 100.0f;
-	printf("\nAcurácia KNN sequencial (k=%d): %.2f%%\n", k, acc);
-	
-    // Liberar memória
-    for (int i = 0; i < n_train; i++) free(X_train[i]);
-    free(X_train); free(y_train);
-    for (int i = 0; i < n_test; i++) free(X_test[i]);
-    free(X_test); free(y_test);
-    free(y_predict);
+    double elapsed = (end.tv_sec - start.tv_sec)
+                    + (end.tv_nsec - start.tv_nsec) / 1e9;
+
+    printf("\nTempo sequencial: %.6f s\n", elapsed);
+
+    int correct = 0;
+    for (int i = 0; i < n_test; i++)
+        if (y_pred[i] == y_test[i]) correct++;
+
+    printf("Acurácia: %.2f%%\n",
+        100.0f * correct / n_test
+    );
+
+    // Libera memória
+    free(X_train);
+    free(X_test);
+    free(y_train);
+    free(y_test);
+    free(y_pred);
     
 	return 0;
 }
-	
