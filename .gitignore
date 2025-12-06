@@ -1,7 +1,7 @@
 venv/
-*.csv
 knn_parallel
 knn_parallel_runs
 knn_parallel_cuda
 knn_parallel_full_cuda
 old/
+classification.ipynb
