@@ -175,8 +175,8 @@ int main() {
     FILE *fp_test  = fopen(test_file, "r");
 
     char line[1024];
-    fgets(line, sizeof(line), fp_train);
-    fgets(line, sizeof(line), fp_test);
+    if (fgets(line, sizeof(line), fp_train) == NULL) { }
+    if (fgets(line, sizeof(line), fp_test) == NULL) { }
 
     int row = 0;
     while (fgets(line, sizeof(line), fp_train) && row < n_train) {

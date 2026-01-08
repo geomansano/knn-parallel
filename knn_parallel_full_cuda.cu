@@ -188,30 +188,28 @@ int main(int argc, char **argv) {
 
     char line[16384];
     // skip header
-    fgets(line, sizeof(line), fp_train);
-    fgets(line, sizeof(line), fp_test);
-
-    int row = 0;
+    if (fgets(line, sizeof(line), fp_train) == NULL) { }
+    if (fgets(line, sizeof(line), fp_test) == NULL) { }
+	
+	int row = 0;
     while (fgets(line, sizeof(line), fp_train) && row < n_train) {
         char *token = strtok(line, ",");
-        for (int col = 0; col < num_features; ++col) {
-            if (!token) { token = "0"; } // fallback
+        for (int col = 0; col < num_features; col++) {
             h_X_train[(size_t)row * num_features + col] = atof(token);
             token = strtok(NULL, ",");
         }
-        h_y_train[row] = token ? atoi(token) : 0;
+        h_y_train[row] = atoi(token);
         row++;
     }
 
     row = 0;
     while (fgets(line, sizeof(line), fp_test) && row < n_test) {
         char *token = strtok(line, ",");
-        for (int col = 0; col < num_features; ++col) {
-            if (!token) { token = "0"; }
+        for (int col = 0; col < num_features; col++) {
             h_X_test[(size_t)row * num_features + col] = atof(token);
             token = strtok(NULL, ",");
         }
-        h_y_test[row] = token ? atoi(token) : 0;
+        h_y_test[row] = atoi(token);
         row++;
     }
 
@@ -246,7 +244,8 @@ int main(int argc, char **argv) {
 
     // configure kernel launch parameters
     dim3 block_dist (256, 4); // tuneable: x: train-tile, y: test-tile (32, 8)
-    // compute grid for kernel1 dynamically per batch: grid.x = ceil(n_train/block_dist.x)
+    // compute grid for kernel1 dynamically per batch: 
+    // grid.x = ceil(n_train/block_dist.x)
     // grid.y = ceil(batch_cur / block_dist.y)
 
     // quickselect kernel: one thread per test in batch
