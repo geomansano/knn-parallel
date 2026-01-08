@@ -73,5 +73,5 @@ O projeto fornece uma base sólida para estudos envolvendo:
 
 ## Autores
 
-**Geovanne Mansano**, **Fernanda Nami**, **Giovanna Rosseto** e **Adriano Tavares**  
+**Geovanne Mansano**, **Fernanda Nami**, **Giovanna Rosseto** e **Adriano Tavares**.  
 Trabalho desenvolvido como projeto final de graduação em Ciência da Computação, com foco em **computação de alto desempenho**, **paralelização de algoritmos** e **ciência de dados em larga escala (Big Data)**.
